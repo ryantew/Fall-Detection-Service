@@ -1,5 +1,7 @@
 package fall_detection.impl;
 
+import java.io.IOException;
+
 import com.phidgets.InterfaceKitPhidget;
 import com.phidgets.Phidget;
 import com.phidgets.PhidgetException;
@@ -8,6 +10,8 @@ import com.phidgets.event.AttachListener;
 import com.phidgets.event.SensorChangeEvent;
 import com.phidgets.event.SensorChangeListener;
 
+import edu.iastate.service.notification.Notification;
+import edu.iastate.sh.services.speech.SpeechService;
 import fall_detection.FallDetection;
 
 public class FallDetectionService implements FallDetection
@@ -23,7 +27,17 @@ public class FallDetectionService implements FallDetection
 	
 	private static final double SENSOR_CONVERSION_FACTOR = 25.71;
 	
+	private static final int CANCEL_WAIT_TIME_SECONDS = 15;
+	
+	private static final String FALL_DETECTED = "A fall has been detected.";
+	private static final String CANCEL_NOTIFICATION = "Press the cancel button if this is a false alarm.";
+	private static final String CANCEL_RECEIVED = "Fall alarm canceled.";
+	
 	private double[][] sensorArray;
+	private boolean canceled;
+	
+	private Notification notifier;
+	private SpeechService speaker;
 	
 	//test method
 	public static void main(String args[]) throws PhidgetException
@@ -89,9 +103,12 @@ public class FallDetectionService implements FallDetection
 		}
 	}
 	
-	public FallDetectionService() throws PhidgetException
+	public FallDetectionService(Notification notifier, SpeechService speaker) throws PhidgetException
 	{
-		sensorArray = new double[SENSOR_GRID_HEIGHT][SENSOR_GRID_WIDTH];
+		this.notifier = notifier;
+		this.speaker = speaker;
+		
+		this.sensorArray = new double[SENSOR_GRID_HEIGHT][SENSOR_GRID_WIDTH];
 		
 		InterfaceKitPhidget[] ifk = new InterfaceKitPhidget[1];
 		
@@ -113,6 +130,54 @@ public class FallDetectionService implements FallDetection
 		//TODO fall detection
 		
 		//TODO if fall is detected sound alarm
+	}
+	
+	private void soundAlarm()
+	{
+		canceled = false;
+
+		try
+		{
+			speaker.speak(FallDetectionService.FALL_DETECTED);
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+
+		try
+		{
+			speaker.speak(FallDetectionService.CANCEL_NOTIFICATION);
+		}
+		catch (IOException e1)
+		{
+			e1.printStackTrace();
+		}
+		
+		try
+		{
+			wait(FallDetectionService.CANCEL_WAIT_TIME_SECONDS * 1000);
+		}
+		catch (InterruptedException e)
+		{
+			e.printStackTrace();
+		}
+		
+		if(canceled)
+		{
+			try
+			{
+				speaker.speak(FallDetectionService.CANCEL_RECEIVED);
+			}
+			catch (IOException e)
+			{
+				e.printStackTrace();
+			}
+		}
+		else
+		{
+			//TODO notify the contact list
+		}
 	}
 
 	private class PressureSensorListener implements SensorChangeListener
@@ -143,7 +208,8 @@ public class FallDetectionService implements FallDetection
 		{
 			if(e.getValue() / SENSOR_CONVERSION_FACTOR >= FallDetectionService.FORCE_TO_CANCEL)
 			{
-				//TODO cancel alarm
+				FallDetectionService.this.canceled = true;
+				FallDetectionService.this.notify();
 			}
 		}
 	}
