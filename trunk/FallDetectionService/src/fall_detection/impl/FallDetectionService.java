@@ -13,10 +13,12 @@ import com.phidgets.event.SensorChangeListener;
 
 import edu.iastate.service.notification.Notification;
 import edu.iastate.sh.services.speech.SpeechService;
-import fall_detection.FallDetection;
+import fall_detection.IFallDetection;
 
-public class FallDetectionService implements FallDetection
+public class FallDetectionService implements IFallDetection
 {
+	public static final String CONTACT_FILE = "resources/contacts.txt";
+	
 	private static final double FORCE_TO_CANCEL = 10;
 	
 	private static final int NUM_INTERFACE_KIT_PORTS = 8;
@@ -51,29 +53,6 @@ public class FallDetectionService implements FallDetection
 	public static void main(String args[]) throws PhidgetException
 	{
 		InterfaceKitPhidget ifk = new InterfaceKitPhidget();
-        ifk.addAttachListener(new AttachListener()
-        {			
-			@Override
-			public void attached(AttachEvent e)
-			{
-				Phidget p = e.getSource();
-				try
-				{
-					System.out.println(p.getDeviceClass());
-					System.out.println(p.getDeviceID());
-					System.out.println(p.getDeviceLabel());
-					System.out.println(p.getDeviceName());
-					System.out.println(p.getDeviceType());
-					System.out.println(p.getDeviceVersion());
-					System.out.println(p.getSerialNumber());
-					System.out.println();
-				}
-				catch (PhidgetException e1)
-				{
-					e1.printStackTrace();
-				}
-			}
-		});
         
         ifk.addSensorChangeListener(new SensorChangeListener()
         {
@@ -81,22 +60,23 @@ public class FallDetectionService implements FallDetection
 			public void sensorChanged(SensorChangeEvent e)
 			{
 				Phidget p = e.getSource();
-				try
-				{
+//				try
+//				{
 					System.out.println(e.getValue());
-					System.out.println(p.getDeviceClass());
-					System.out.println(p.getDeviceID());
-					System.out.println(p.getDeviceLabel());
-					System.out.println(p.getDeviceName());
-					System.out.println(p.getDeviceType());
-					System.out.println(p.getDeviceVersion());
-					System.out.println(p.getSerialNumber());
 					System.out.println();
-				}
-				catch (PhidgetException e1)
-				{
-					e1.printStackTrace();
-				}
+//					System.out.println(p.getDeviceClass());
+//					System.out.println(p.getDeviceID());
+//					System.out.println(p.getDeviceLabel());
+//					System.out.println(p.getDeviceName());
+//					System.out.println(p.getDeviceType());
+//					System.out.println(p.getDeviceVersion());
+//					System.out.println(p.getSerialNumber());
+//					System.out.println();
+//				}
+//				catch (PhidgetException e1)
+//				{
+//					e1.printStackTrace();
+//				}
 				
 			}
 		});
@@ -104,7 +84,7 @@ public class FallDetectionService implements FallDetection
         ifk.open(INTERFACE_KIT_SERIAL_NUM_0);
         
         try {
-			Thread.sleep(30000);
+			Thread.sleep(1000000);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -140,6 +120,9 @@ public class FallDetectionService implements FallDetection
 	 */
 	private void detectFall(int r, int c)
 	{
+		if(sounding){
+			return;
+		}
 		int numTiles = 0;
 		for(int i = r-2; i < r+1; i++){
 			for(int j = c-2; j < c+1; j++){
@@ -149,7 +132,7 @@ public class FallDetectionService implements FallDetection
 			}
 		}
 		
-		if(numTiles >= NUM_TILES_TO_DETECT && !sounding){
+		if(numTiles >= NUM_TILES_TO_DETECT){
 			soundAlarm();
 		}
 	}
@@ -199,10 +182,15 @@ public class FallDetectionService implements FallDetection
 		}
 		else
 		{
-			ArrayList<String> contacts = contactList.getContacts();
+			ArrayList<Contact> contacts = contactList.getContacts();
 			
-			for(String s : contacts){
-				notifier.emailandtext(s, FALL_NOTIFICATION);
+			for(Contact c : contacts){
+				if(c.getEmail() != ""){
+					notifier.emailandtext(c.getEmail(), FALL_NOTIFICATION);
+				}
+				if(c.getPhoneNum() != ""){
+					notifier.emailandtext(c.getPhoneNum(), FALL_NOTIFICATION);
+				}
 			}
 			/*
 			 * Should it cancel the alarm after sending the notifications or should it keep the alarm going,
