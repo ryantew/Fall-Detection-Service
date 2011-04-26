@@ -1,6 +1,7 @@
 package fall_detection.impl;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import com.phidgets.InterfaceKitPhidget;
 import com.phidgets.Phidget;
@@ -29,15 +30,22 @@ public class FallDetectionService implements FallDetection
 	
 	private static final int CANCEL_WAIT_TIME_SECONDS = 15;
 	
+	//This will need to be adjusted
+	private static final int NUM_TILES_TO_DETECT = 5;
+	private static final double DETECTION_WEIGHT_THRESHOLD = 0.0;
+	
 	private static final String FALL_DETECTED = "A fall has been detected.";
 	private static final String CANCEL_NOTIFICATION = "Press the cancel button if this is a false alarm.";
 	private static final String CANCEL_RECEIVED = "Fall alarm canceled.";
+	private static final String FALL_NOTIFICATION = "A fall has occurred at the smart home. Please check on the resident.";
 	
 	private double[][] sensorArray;
 	private boolean canceled;
+	private boolean sounding;
 	
 	private Notification notifier;
 	private SpeechService speaker;
+	private ContactList contactList;
 	
 	//test method
 	public static void main(String args[]) throws PhidgetException
@@ -125,17 +133,31 @@ public class FallDetectionService implements FallDetection
 		
 	}
 	
-	private void detectFall()
+	/**
+	 * This algorithm is slightly crappy/very simplistic, but it's a start.
+	 * @param r
+	 * @param c
+	 */
+	private void detectFall(int r, int c)
 	{
-		//TODO fall detection
+		int numTiles = 0;
+		for(int i = r-2; i < r+1; i++){
+			for(int j = c-2; j < c+1; j++){
+				if(i >= 0 && j >= 0 && i < SENSOR_GRID_HEIGHT && j < SENSOR_GRID_WIDTH && sensorArray[i][j] > DETECTION_WEIGHT_THRESHOLD){
+						numTiles++;
+				}
+			}
+		}
 		
-		//TODO if fall is detected sound alarm
+		if(numTiles >= NUM_TILES_TO_DETECT && !sounding){
+			soundAlarm();
+		}
 	}
 	
 	private void soundAlarm()
 	{
 		canceled = false;
-
+		sounding = true;
 		try
 		{
 			speaker.speak(FallDetectionService.FALL_DETECTED);
@@ -173,10 +195,19 @@ public class FallDetectionService implements FallDetection
 			{
 				e.printStackTrace();
 			}
+			sounding = false;
 		}
 		else
 		{
-			//TODO notify the contact list
+			ArrayList<String> contacts = contactList.getContacts();
+			
+			for(String s : contacts){
+				notifier.emailandtext(s, FALL_NOTIFICATION);
+			}
+			/*
+			 * Should it cancel the alarm after sending the notifications or should it keep the alarm going,
+			 * resending the notifications after some period of time until it's shut off?
+			 */
 		}
 	}
 
@@ -197,7 +228,7 @@ public class FallDetectionService implements FallDetection
 			int c = i % FallDetectionService.SENSOR_GRID_WIDTH;
 			
 			FallDetectionService.this.sensorArray[r][c] = e.getValue() / SENSOR_CONVERSION_FACTOR;
-			FallDetectionService.this.detectFall();
+			FallDetectionService.this.detectFall(r, c);
 		}
 	}
 	
