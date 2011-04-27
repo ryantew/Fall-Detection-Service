@@ -12,7 +12,9 @@ import com.phidgets.event.SensorChangeEvent;
 import com.phidgets.event.SensorChangeListener;
 
 import edu.iastate.service.notification.Notification;
+import edu.iastate.service.notification.impl.NotificationImpl;
 import edu.iastate.sh.services.speech.SpeechService;
+import edu.iastate.sh.services.speech.impl.SpeechServiceImpl;
 import fall_detection.IFallDetection;
 
 public class FallDetectionService implements IFallDetection
@@ -25,7 +27,7 @@ public class FallDetectionService implements IFallDetection
 	
 	private static final int INTERFACE_KIT_SERIAL_NUM_0 = 76397;
 	
-	private static final int SENSOR_GRID_WIDTH = 3;
+	private static final int SENSOR_GRID_WIDTH = 2;
 	private static final int SENSOR_GRID_HEIGHT = 3;
 	
 	private static final double SENSOR_CONVERSION_FACTOR = 25.71;
@@ -33,13 +35,16 @@ public class FallDetectionService implements IFallDetection
 	private static final int CANCEL_WAIT_TIME_SECONDS = 15;
 	
 	//This will need to be adjusted
-	private static final int NUM_TILES_TO_DETECT = 5;
-	private static final double DETECTION_WEIGHT_THRESHOLD = 0.0;
+	private static final int NUM_TILES_TO_DETECT = 1;
+	private static final double DETECTION_WEIGHT_THRESHOLD = 10.0;
 	
 	private static final String FALL_DETECTED = "A fall has been detected.";
 	private static final String CANCEL_NOTIFICATION = "Press the cancel button if this is a false alarm.";
 	private static final String CANCEL_RECEIVED = "Fall alarm canceled.";
 	private static final String FALL_NOTIFICATION = "A fall has occurred at the smart home. Please check on the resident.";
+	
+	private Object cancelWait;
+	private Object alarmLock;
 	
 	private double[][] sensorArray;
 	private boolean canceled;
@@ -52,42 +57,18 @@ public class FallDetectionService implements IFallDetection
 	//test method
 	public static void main(String args[]) throws PhidgetException
 	{
-		InterfaceKitPhidget ifk = new InterfaceKitPhidget();
-        
-        ifk.addSensorChangeListener(new SensorChangeListener()
-        {
-			@Override
-			public void sensorChanged(SensorChangeEvent e)
+		FallDetectionService service = new FallDetectionService(new NotificationImpl(), new SpeechServiceImpl());
+		
+		while(true)
+		{
+			try
 			{
-				Phidget p = e.getSource();
-//				try
-//				{
-					System.out.println(e.getValue());
-					System.out.println();
-//					System.out.println(p.getDeviceClass());
-//					System.out.println(p.getDeviceID());
-//					System.out.println(p.getDeviceLabel());
-//					System.out.println(p.getDeviceName());
-//					System.out.println(p.getDeviceType());
-//					System.out.println(p.getDeviceVersion());
-//					System.out.println(p.getSerialNumber());
-//					System.out.println();
-//				}
-//				catch (PhidgetException e1)
-//				{
-//					e1.printStackTrace();
-//				}
-				
+				Thread.sleep(10000);
 			}
-		});
-
-        ifk.open(INTERFACE_KIT_SERIAL_NUM_0);
-        
-        try {
-			Thread.sleep(1000000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
 		}
 	}
 	
@@ -96,6 +77,11 @@ public class FallDetectionService implements IFallDetection
 		this.notifier = notifier;
 		this.speaker = speaker;
 		
+		this.cancelWait = new Object();
+		this.alarmLock = new Object();
+		
+		this.sounding = false;
+		this.contactList = new ContactList(FallDetectionService.CONTACT_FILE);
 		this.sensorArray = new double[SENSOR_GRID_HEIGHT][SENSOR_GRID_WIDTH];
 		
 		InterfaceKitPhidget[] ifk = new InterfaceKitPhidget[1];
@@ -131,65 +117,97 @@ public class FallDetectionService implements IFallDetection
 				}
 			}
 		}
-		
-		if(numTiles >= NUM_TILES_TO_DETECT){
-			soundAlarm();
-		}
+		System.out.println(numTiles);
+//		if(numTiles >= NUM_TILES_TO_DETECT)
+//		{
+//			Thread t = new Thread(new Runnable()
+//			{
+//				@Override
+//				public void run()
+//				{
+//					soundAlarm();
+//				}
+//			});
+//			
+//			t.start();
+//		}
 	}
 	
 	private void soundAlarm()
 	{
-		canceled = false;
-		sounding = true;
-		try
+		boolean soundAlarm = false;
+		synchronized(alarmLock)
 		{
-			speaker.speak(FallDetectionService.FALL_DETECTED);
-		}
-		catch (IOException e)
-		{
-			e.printStackTrace();
-		}
-
-		try
-		{
-			speaker.speak(FallDetectionService.CANCEL_NOTIFICATION);
-		}
-		catch (IOException e1)
-		{
-			e1.printStackTrace();
+			if(!FallDetectionService.this.sounding)
+			{
+				soundAlarm = true;
+				
+				canceled = false;
+				sounding = true;
+			}
 		}
 		
-		try
+		if(!soundAlarm)
+			return;
+		
+		System.out.println(FallDetectionService.FALL_DETECTED);
+//		try
+//		{
+//			speaker.speak(FallDetectionService.FALL_DETECTED);
+//		}
+//		catch (IOException e)
+//		{
+//			e.printStackTrace();
+//		}
+
+		System.out.println(FallDetectionService.CANCEL_NOTIFICATION);
+//		try
+//		{
+//			speaker.speak(FallDetectionService.CANCEL_NOTIFICATION);
+//		}
+//		catch (IOException e1)
+//		{
+//			e1.printStackTrace();
+//		}
+		
+		contactList.populateList();
+		
+		synchronized(cancelWait)
 		{
-			wait(FallDetectionService.CANCEL_WAIT_TIME_SECONDS * 1000);
-		}
-		catch (InterruptedException e)
-		{
-			e.printStackTrace();
+			try
+			{
+				cancelWait.wait(FallDetectionService.CANCEL_WAIT_TIME_SECONDS * 1000);
+			}
+			catch (InterruptedException e)
+			{
+				e.printStackTrace();
+			}
 		}
 		
 		if(canceled)
 		{
-			try
-			{
-				speaker.speak(FallDetectionService.CANCEL_RECEIVED);
-			}
-			catch (IOException e)
-			{
-				e.printStackTrace();
-			}
+			System.out.println(FallDetectionService.CANCEL_RECEIVED);
+//			try
+//			{
+//				speaker.speak(FallDetectionService.CANCEL_RECEIVED);
+//			}
+//			catch (IOException e)
+//			{
+//				e.printStackTrace();
+//			}
 			sounding = false;
 		}
 		else
 		{
 			ArrayList<Contact> contacts = contactList.getContacts();
 			
+			System.out.println(FallDetectionService.FALL_NOTIFICATION);
 			for(Contact c : contacts){
 				if(c.getEmail() != ""){
-					notifier.emailandtext(c.getEmail(), FALL_NOTIFICATION);
+					notifier.emailandtext(c.getEmail(), FallDetectionService.FALL_NOTIFICATION);
 				}
 				if(c.getPhoneNum() != ""){
-					notifier.emailandtext(c.getPhoneNum(), FALL_NOTIFICATION);
+					notifier.emailandtext(c.getPhoneNum(), FallDetectionService.FALL_NOTIFICATION);
 				}
 			}
 			/*
@@ -212,6 +230,9 @@ public class FallDetectionService implements IFallDetection
 		public void sensorChanged(SensorChangeEvent e)
 		{
 			int i = e.getIndex() + startingIndex;
+			if(i < 0 || i >= FallDetectionService.SENSOR_GRID_WIDTH * FallDetectionService.SENSOR_GRID_HEIGHT)
+				return;
+			
 			int r = i / FallDetectionService.SENSOR_GRID_WIDTH;
 			int c = i % FallDetectionService.SENSOR_GRID_WIDTH;
 			
@@ -225,10 +246,18 @@ public class FallDetectionService implements IFallDetection
 		@Override
 		public void sensorChanged(SensorChangeEvent e)
 		{
-			if(e.getValue() / SENSOR_CONVERSION_FACTOR >= FallDetectionService.FORCE_TO_CANCEL)
+			if(e.getIndex() != 0)
+				return;
+			
+			if(FallDetectionService.this.sounding && e.getValue() / SENSOR_CONVERSION_FACTOR >= FallDetectionService.FORCE_TO_CANCEL)
 			{
 				FallDetectionService.this.canceled = true;
-				FallDetectionService.this.notify();
+				FallDetectionService.this.sounding = false;
+				
+				synchronized(FallDetectionService.this.cancelWait)
+				{
+					FallDetectionService.this.cancelWait.notify();
+				}
 			}
 		}
 	}

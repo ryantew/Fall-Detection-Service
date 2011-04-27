@@ -1,8 +1,12 @@
 package fall_detection.impl;
 
 import java.util.ArrayList;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Scanner;
 import java.io.FileInputStream;
 
@@ -18,6 +22,7 @@ public class ContactList {
 	
 	public ContactList(String URI){
 		fileURI = URI;
+		contacts = new ArrayList<Contact>();
 		populateList();
 	}
 	
@@ -29,6 +34,18 @@ public class ContactList {
 		contacts.remove(item);
 	}
 	
+	public void add(Contact c){
+		for(Contact contact : contacts)
+		{
+			if(contact.equals(c))
+			{
+				return;
+			}
+		}
+		
+		contacts.add(c);
+	}
+	
 	public void populateList(){
 		File contactsFile = new File(fileURI);
 		try {
@@ -38,33 +55,31 @@ public class ContactList {
 				contacts.add(parseContact(s.nextLine()));
 			}
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 	
+	public void writeToFile(){
+		File f = new File(fileURI);
+		FileWriter stream;
+		try {
+			f.createNewFile();
+			stream = new FileWriter(f);
+			
+			for(Contact c : contacts){
+				stream.write(c.fileToString());
+			}
+			
+			stream.flush();
+			stream.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+			return;
+		}
+	}
+	
 	private Contact parseContact(String line){
-		int commaIndex = line.indexOf(',');
-		int oldIndex = commaIndex;
-		String name;
-		String email;
-		String phone;
-		if(commaIndex != 0){
-			name = line.substring(0, commaIndex);
-		}else{
-			name = "";
-		}
-		commaIndex = line.indexOf(',', commaIndex);
-		if(commaIndex-oldIndex > 0){
-			email = line.substring(oldIndex + 1, commaIndex);
-		}else{
-			email = "";
-		}
-		if(commaIndex + 1 < line.length()){
-			phone = line.substring(commaIndex + 1);
-		}else{
-			phone = "";
-		}
-		return new Contact(name, email, phone);
+		String[] info = line.split(",");
+		return new Contact(info[0], info[1], info[2]);
 	}
 }
