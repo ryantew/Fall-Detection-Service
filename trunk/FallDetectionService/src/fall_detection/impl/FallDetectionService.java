@@ -1,6 +1,7 @@
 package fall_detection.impl;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import com.phidgets.InterfaceKitPhidget;
 import com.phidgets.PhidgetException;
@@ -21,10 +22,10 @@ public class FallDetectionService implements IFallDetection
 	
 	private static final int NUM_INTERFACE_KIT_PORTS = 8;
 	
-	private static final int INTERFACE_KIT_SERIAL_NUM_0 = 76397;
-	private static final int INTERFACE_KIT_SERIAL_NUM_1 = 107381;
+	private static final int INTERFACE_KIT_SERIAL_NUM_0 = 107381;
+	private static final int INTERFACE_KIT_SERIAL_NUM_1 = 76397;
 	
-	private static final int SENSOR_GRID_WIDTH = 2;
+	private static final int SENSOR_GRID_WIDTH = 5;
 	private static final int SENSOR_GRID_HEIGHT = 3;
 	
 	private static final double SENSOR_CONVERSION_FACTOR = 25.71;
@@ -32,13 +33,15 @@ public class FallDetectionService implements IFallDetection
 	private static final int CANCEL_WAIT_TIME_SECONDS = 15;
 	
 	//This will need to be adjusted
-	private static final int NUM_TILES_TO_DETECT = 1;
-	private static final double DETECTION_WEIGHT_THRESHOLD = 10.0;
+	private static final int NUM_TILES_TO_DETECT = 4;
+	private static final double DETECTION_WEIGHT_THRESHOLD = 0.5;
+	private static final int DETECTION_RADIUS = 3;
 	
 	private static final String FALL_DETECTED = "A fall has been detected.";
 	private static final String CANCEL_NOTIFICATION = "Press the cancel button if this is a false alarm.";
 	private static final String CANCEL_RECEIVED = "Fall alarm canceled.";
 	private static final String FALL_NOTIFICATION = "A fall has occurred at the smart home. Please check on the resident.";
+	
 	
 	private Object cancelWait;
 	private Object alarmLock;
@@ -118,13 +121,14 @@ public class FallDetectionService implements IFallDetection
 			return;
 		}
 		int numTiles = 0;
-		for(int i = r-2; i < r+1; i++){
-			for(int j = c-2; j < c+1; j++){
+		for(int i = r-DETECTION_RADIUS; i < r+DETECTION_RADIUS; i++){
+			for(int j = c-DETECTION_RADIUS; j < c+DETECTION_RADIUS; j++){
 				if(i >= 0 && j >= 0 && i < SENSOR_GRID_HEIGHT && j < SENSOR_GRID_WIDTH && sensorArray[i][j] > DETECTION_WEIGHT_THRESHOLD){
 						numTiles++;
 				}
 			}
 		}
+
 		System.out.println(numTiles);
 		if(numTiles >= NUM_TILES_TO_DETECT)
 		{
@@ -163,7 +167,7 @@ public class FallDetectionService implements IFallDetection
 		{
 			speaker.speak(FallDetectionService.FALL_DETECTED);
 		}
-		catch (IOException e)
+		catch (Exception e)
 		{
 			e.printStackTrace();
 		}
@@ -173,9 +177,9 @@ public class FallDetectionService implements IFallDetection
 		{
 			speaker.speak(FallDetectionService.CANCEL_NOTIFICATION);
 		}
-		catch (IOException e1)
+		catch (Exception e)
 		{
-			e1.printStackTrace();
+			e.printStackTrace();
 		}
 		
 		contactList.populateList();
@@ -199,7 +203,7 @@ public class FallDetectionService implements IFallDetection
 			{
 				speaker.speak(FallDetectionService.CANCEL_RECEIVED);
 			}
-			catch (IOException e)
+			catch (Exception e)
 			{
 				e.printStackTrace();
 			}
@@ -207,17 +211,18 @@ public class FallDetectionService implements IFallDetection
 		}
 		else
 		{
-//			ArrayList<Contact> contacts = contactList.getContacts();
-//			
-//			System.out.println(FallDetectionService.FALL_NOTIFICATION);
-//			for(Contact c : contacts){
-//				if(c.getEmail() != ""){
-//					notifier.emailandtext(c.getEmail(), FallDetectionService.FALL_NOTIFICATION);
-//				}
-//				if(c.getPhoneNum() != ""){
-//					notifier.emailandtext(c.getPhoneNum(), FallDetectionService.FALL_NOTIFICATION);
-//				}
-//			}
+			ArrayList<Contact> contacts = contactList.getContacts();
+			
+			System.out.println(FallDetectionService.FALL_NOTIFICATION);
+			for(Contact c : contacts)
+			{
+				if(c.getEmail() != ""){
+					notifier.emailandtext(c.getEmail(), FallDetectionService.FALL_NOTIFICATION);
+				}
+				if(c.getPhoneNum() != ""){
+					notifier.emailandtext(c.getPhoneNum(), FallDetectionService.FALL_NOTIFICATION);
+				}
+			}
 			/*
 			 * Should it cancel the alarm after sending the notifications or should it keep the alarm going,
 			 * resending the notifications after some period of time until it's shut off?
