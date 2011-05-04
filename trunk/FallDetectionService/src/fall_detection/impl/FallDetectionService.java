@@ -1,13 +1,9 @@
 package fall_detection.impl;
 
 import java.io.IOException;
-import java.util.ArrayList;
 
 import com.phidgets.InterfaceKitPhidget;
-import com.phidgets.Phidget;
 import com.phidgets.PhidgetException;
-import com.phidgets.event.AttachEvent;
-import com.phidgets.event.AttachListener;
 import com.phidgets.event.SensorChangeEvent;
 import com.phidgets.event.SensorChangeListener;
 
@@ -26,6 +22,7 @@ public class FallDetectionService implements IFallDetection
 	private static final int NUM_INTERFACE_KIT_PORTS = 8;
 	
 	private static final int INTERFACE_KIT_SERIAL_NUM_0 = 76397;
+	private static final int INTERFACE_KIT_SERIAL_NUM_1 = 107381;
 	
 	private static final int SENSOR_GRID_WIDTH = 2;
 	private static final int SENSOR_GRID_HEIGHT = 3;
@@ -46,6 +43,7 @@ public class FallDetectionService implements IFallDetection
 	private Object cancelWait;
 	private Object alarmLock;
 	
+	private InterfaceKitPhidget[] ifk;
 	private double[][] sensorArray;
 	private boolean canceled;
 	private boolean sounding;
@@ -58,6 +56,7 @@ public class FallDetectionService implements IFallDetection
 	public static void main(String args[]) throws PhidgetException
 	{
 		FallDetectionService service = new FallDetectionService(new NotificationImpl(), new SpeechServiceImpl());
+		service.start();
 		
 		while(true)
 		{
@@ -84,19 +83,28 @@ public class FallDetectionService implements IFallDetection
 		this.contactList = new ContactList(FallDetectionService.CONTACT_FILE);
 		this.sensorArray = new double[SENSOR_GRID_HEIGHT][SENSOR_GRID_WIDTH];
 		
-		InterfaceKitPhidget[] ifk = new InterfaceKitPhidget[1];
+		ifk = new InterfaceKitPhidget[2];
 		
 		ifk[0] = new InterfaceKitPhidget();
 		ifk[0].addSensorChangeListener(new PressureSensorListener(0));
 		ifk[0].addSensorChangeListener(new CancelButtonListener());
-		ifk[0].open(INTERFACE_KIT_SERIAL_NUM_0);
+
+		ifk[1] = new InterfaceKitPhidget();
+		ifk[1].addSensorChangeListener(new PressureSensorListener(1));
 	}
 	
 	@Override
 	public void start()
 	{
-		// TODO Auto-generated method stub
-		
+		try
+		{
+			ifk[0].open(INTERFACE_KIT_SERIAL_NUM_0);
+			ifk[1].open(INTERFACE_KIT_SERIAL_NUM_1);
+		}
+		catch(PhidgetException e)
+		{
+			e.printStackTrace();
+		}
 	}
 	
 	/**
@@ -118,19 +126,19 @@ public class FallDetectionService implements IFallDetection
 			}
 		}
 		System.out.println(numTiles);
-//		if(numTiles >= NUM_TILES_TO_DETECT)
-//		{
-//			Thread t = new Thread(new Runnable()
-//			{
-//				@Override
-//				public void run()
-//				{
-//					soundAlarm();
-//				}
-//			});
-//			
-//			t.start();
-//		}
+		if(numTiles >= NUM_TILES_TO_DETECT)
+		{
+			Thread t = new Thread(new Runnable()
+			{
+				@Override
+				public void run()
+				{
+					soundAlarm();
+				}
+			});
+			
+			t.start();
+		}
 	}
 	
 	private void soundAlarm()
@@ -151,24 +159,24 @@ public class FallDetectionService implements IFallDetection
 			return;
 		
 		System.out.println(FallDetectionService.FALL_DETECTED);
-//		try
-//		{
-//			speaker.speak(FallDetectionService.FALL_DETECTED);
-//		}
-//		catch (IOException e)
-//		{
-//			e.printStackTrace();
-//		}
+		try
+		{
+			speaker.speak(FallDetectionService.FALL_DETECTED);
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
 
 		System.out.println(FallDetectionService.CANCEL_NOTIFICATION);
-//		try
-//		{
-//			speaker.speak(FallDetectionService.CANCEL_NOTIFICATION);
-//		}
-//		catch (IOException e1)
-//		{
-//			e1.printStackTrace();
-//		}
+		try
+		{
+			speaker.speak(FallDetectionService.CANCEL_NOTIFICATION);
+		}
+		catch (IOException e1)
+		{
+			e1.printStackTrace();
+		}
 		
 		contactList.populateList();
 		
@@ -187,29 +195,29 @@ public class FallDetectionService implements IFallDetection
 		if(canceled)
 		{
 			System.out.println(FallDetectionService.CANCEL_RECEIVED);
-//			try
-//			{
-//				speaker.speak(FallDetectionService.CANCEL_RECEIVED);
-//			}
-//			catch (IOException e)
-//			{
-//				e.printStackTrace();
-//			}
+			try
+			{
+				speaker.speak(FallDetectionService.CANCEL_RECEIVED);
+			}
+			catch (IOException e)
+			{
+				e.printStackTrace();
+			}
 			sounding = false;
 		}
 		else
 		{
-			ArrayList<Contact> contacts = contactList.getContacts();
-			
-			System.out.println(FallDetectionService.FALL_NOTIFICATION);
-			for(Contact c : contacts){
-				if(c.getEmail() != ""){
-					notifier.emailandtext(c.getEmail(), FallDetectionService.FALL_NOTIFICATION);
-				}
-				if(c.getPhoneNum() != ""){
-					notifier.emailandtext(c.getPhoneNum(), FallDetectionService.FALL_NOTIFICATION);
-				}
-			}
+//			ArrayList<Contact> contacts = contactList.getContacts();
+//			
+//			System.out.println(FallDetectionService.FALL_NOTIFICATION);
+//			for(Contact c : contacts){
+//				if(c.getEmail() != ""){
+//					notifier.emailandtext(c.getEmail(), FallDetectionService.FALL_NOTIFICATION);
+//				}
+//				if(c.getPhoneNum() != ""){
+//					notifier.emailandtext(c.getPhoneNum(), FallDetectionService.FALL_NOTIFICATION);
+//				}
+//			}
 			/*
 			 * Should it cancel the alarm after sending the notifications or should it keep the alarm going,
 			 * resending the notifications after some period of time until it's shut off?
