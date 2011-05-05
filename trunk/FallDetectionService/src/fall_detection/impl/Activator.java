@@ -13,6 +13,9 @@ import fall_detection.IFallDetection;
 
 public class Activator implements BundleActivator
 {
+	private ContactEditor editor;
+	private FallDetectionService fallDetection;
+	
 	@Override
 	public void start(BundleContext bc) throws Exception
 	{
@@ -21,19 +24,28 @@ public class Activator implements BundleActivator
 		Notification notifier = (Notification)bc.getService(bc.getServiceReference(Notification.class.getName()));
 		SpeechService speaker = (SpeechService)bc.getService(bc.getServiceReference(SpeechService.class.getName()));
 		
-		FallDetectionService fallDetection = new FallDetectionService(notifier, speaker);
+		editor = new ContactEditor();
+		editor.start();
+		bc.registerService(IContactEditor.class.getName(), editor, new Hashtable());
+		System.out.println("Service registered: ContactEditor");
+		
+		fallDetection = new FallDetectionService(notifier, speaker);
 		fallDetection.start();
 		bc.registerService(IFallDetection.class.getName(), fallDetection, new Hashtable());
 		System.out.println("Service registered: FallDetection");
-		
-		ContactEditor editor = new ContactEditor();
-		bc.registerService(IContactEditor.class.getName(), editor, new Hashtable());
-		System.out.println("Service registered: ContactEditor");
 	}
 
 	@Override
 	public void stop(BundleContext bc) throws Exception
 	{
+		System.out.println("Stoping datebundle...");
+
+		fallDetection.stop();
+		editor.stop();
+		
+		fallDetection = null;
+		editor = null;
+		
 		bc.ungetService(bc.getServiceReference(Notification.class.getName()));
 		bc.ungetService(bc.getServiceReference(SpeechService.class.getName()));
 	}

@@ -1,14 +1,12 @@
 package fall_detection.impl;
 
-import java.util.ArrayList;
-import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Scanner;
-import java.io.FileInputStream;
 
 /**
  * 
@@ -51,6 +49,7 @@ public class ContactList {
 		try {
 			FileInputStream stream = new FileInputStream(contactsFile);
 			Scanner s = new Scanner(stream);
+			contacts = new ArrayList<Contact>();
 			while(s.hasNextLine()){
 				contacts.add(parseContact(s.nextLine()));
 			}
@@ -80,6 +79,17 @@ public class ContactList {
 	
 	private Contact parseContact(String line){
 		String[] info = line.split(",");
-		return new Contact(info[0], info[1], info[2]);
+		String name = "";
+		String email = "";
+		String phone = "";
+		
+		if(info.length > 0)
+			name = info[0];
+		if(info.length > 1)
+			email = info[1];
+		if(info.length > 2)
+			phone = info[2];
+		
+		return new Contact(name, email, phone);
 	}
 }

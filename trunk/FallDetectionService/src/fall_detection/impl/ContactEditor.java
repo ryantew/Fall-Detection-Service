@@ -16,8 +16,6 @@ import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 
 import fall_detection.IContactEditor;
 
@@ -48,6 +46,9 @@ public class ContactEditor implements IContactEditor
 		
 		if(!contactFile.exists())
 		{
+			File contactFolder = new File(FallDetectionService.CONTACT_FILE.substring(0, FallDetectionService.CONTACT_FILE.lastIndexOf('/')));
+			contactFolder.mkdirs();
+			
 			try
 			{
 				contactFile.createNewFile();
@@ -68,12 +69,18 @@ public class ContactEditor implements IContactEditor
 		displayContacts();
 	}
 	
+	@Override
+	public void stop()
+	{
+		frame.dispose();
+	}
+	
 	private void initializeComponents()
 	{
 		frame = new JFrame();
 		Container container = frame.getContentPane();
 		
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		frame.setPreferredSize(new Dimension(500, 500));
 		
 		JPanel buttonPanel = new JPanel();

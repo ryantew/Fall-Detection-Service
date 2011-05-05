@@ -1,6 +1,5 @@
 package fall_detection.impl;
 
-import java.io.IOException;
 import java.util.ArrayList;
 
 import com.phidgets.InterfaceKitPhidget;
@@ -48,6 +47,7 @@ public class FallDetectionService implements IFallDetection
 	
 	private InterfaceKitPhidget[] ifk;
 	private double[][] sensorArray;
+	private boolean canCanel;
 	private boolean canceled;
 	private boolean sounding;
 	
@@ -82,6 +82,7 @@ public class FallDetectionService implements IFallDetection
 		this.cancelWait = new Object();
 		this.alarmLock = new Object();
 		
+		this.canCanel = false;
 		this.sounding = false;
 		this.contactList = new ContactList(FallDetectionService.CONTACT_FILE);
 		this.sensorArray = new double[SENSOR_GRID_HEIGHT][SENSOR_GRID_WIDTH];
@@ -110,6 +111,23 @@ public class FallDetectionService implements IFallDetection
 		}
 	}
 	
+	@Override
+	public void stop()
+	{
+		notifier = null;
+		speaker = null;
+		
+		try
+		{
+			ifk[0].close();
+			ifk[1].close();
+		}
+		catch (PhidgetException e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
 	/**
 	 * This algorithm is slightly crappy/very simplistic, but it's a start.
 	 * @param r
@@ -129,7 +147,6 @@ public class FallDetectionService implements IFallDetection
 			}
 		}
 
-		System.out.println(numTiles);
 		if(numTiles >= NUM_TILES_TO_DETECT)
 		{
 			Thread t = new Thread(new Runnable()
@@ -166,6 +183,7 @@ public class FallDetectionService implements IFallDetection
 		try
 		{
 			speaker.speak(FallDetectionService.FALL_DETECTED);
+			Thread.sleep(5000);
 		}
 		catch (Exception e)
 		{
@@ -186,6 +204,7 @@ public class FallDetectionService implements IFallDetection
 		
 		synchronized(cancelWait)
 		{
+			canCanel = true;
 			try
 			{
 				cancelWait.wait(FallDetectionService.CANCEL_WAIT_TIME_SECONDS * 1000);
@@ -216,10 +235,10 @@ public class FallDetectionService implements IFallDetection
 			System.out.println(FallDetectionService.FALL_NOTIFICATION);
 			for(Contact c : contacts)
 			{
-				if(c.getEmail() != ""){
+				if(!c.getEmail().equals("")){
 					notifier.emailandtext(c.getEmail(), FallDetectionService.FALL_NOTIFICATION);
 				}
-				if(c.getPhoneNum() != ""){
+				if(!c.getPhoneNum().equals("")){
 					notifier.emailandtext(c.getPhoneNum(), FallDetectionService.FALL_NOTIFICATION);
 				}
 			}
@@ -262,13 +281,14 @@ public class FallDetectionService implements IFallDetection
 			if(e.getIndex() != 0)
 				return;
 			
-			if(FallDetectionService.this.sounding && e.getValue() / SENSOR_CONVERSION_FACTOR >= FallDetectionService.FORCE_TO_CANCEL)
+			if(FallDetectionService.this.canCanel && e.getValue() / SENSOR_CONVERSION_FACTOR >= FallDetectionService.FORCE_TO_CANCEL)
 			{
 				FallDetectionService.this.canceled = true;
 				FallDetectionService.this.sounding = false;
 				
 				synchronized(FallDetectionService.this.cancelWait)
 				{
+					FallDetectionService.this.canCanel = false;
 					FallDetectionService.this.cancelWait.notify();
 				}
 			}

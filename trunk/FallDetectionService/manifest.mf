@@ -5,7 +5,9 @@ Bundle-Description: Fall Detection Bundle
 Bundle-Activator: fall_detection.impl.Activator
 Import-Package: org.osgi.framework,
  com.phidgets,
- com.phidgets.events,
+ com.phidgets.event,
  edu.iastate.sh.services.speech,
  edu.iastate.service.notification
-Bundle-ClassPath: .
+Bundle-ClassPath: .,
+ lib/framework.jar,
+ lib/phidget21.jar
