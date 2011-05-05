@@ -1,0 +1,8 @@
+Manifest-Version: 1.0
+Bundle-Name: ContactEditorBundle
+Bundle-Version: 1.0.0
+Bundle-Description: Contact Editor Bundle
+Bundle-Activator: contact_editor.impl.Activator
+Import-Package: org.osgi.framework, fall_detection
+Bundle-ClassPath: .,
+ lib/framework.jar

@@ -1,0 +1,14 @@
+Manifest-Version: 1.0
+Bundle-Name: FallDetectionBundle
+Bundle-Version: 1.0.0
+Bundle-Description: Fall Detection Bundle
+Bundle-Activator: fall_detection.impl.Activator
+Import-Package: org.osgi.framework,
+ com.phidgets,
+ com.phidgets.event,
+ edu.iastate.sh.services.speech,
+ edu.iastate.service.notification
+Export-Package: fall_detection
+Bundle-ClassPath: .,
+ lib/framework.jar,
+ lib/phidget21.jar
