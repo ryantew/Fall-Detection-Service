@@ -44,8 +44,8 @@ public class FallDetection implements FallDetectionService
 	/**
 	 * The dimensions of the grid
 	 */
-	private static final int SENSOR_GRID_WIDTH = 5;
-	private static final int SENSOR_GRID_HEIGHT = 3;
+	private static final int SENSOR_GRID_COLUMNS = 5;
+	private static final int SENSOR_GRID_ROWS = 3;
 
 	/**
 	 * The conversion factor between the values from the sensors and their value in lbs.
@@ -148,7 +148,7 @@ public class FallDetection implements FallDetectionService
 		this.canCanel = false;
 		this.sounding = false;
 		
-		this.sensorArray = new double[SENSOR_GRID_HEIGHT][SENSOR_GRID_WIDTH];
+		this.sensorArray = new double[SENSOR_GRID_ROWS][SENSOR_GRID_COLUMNS];
 		
 		ifk = new InterfaceKitPhidget[2];
 
@@ -225,7 +225,7 @@ public class FallDetection implements FallDetectionService
 		int numTiles = 0;
 		for(int i = r-DETECTION_RADIUS; i < r+DETECTION_RADIUS; i++){
 			for(int j = c-DETECTION_RADIUS; j < c+DETECTION_RADIUS; j++){
-				if(i >= 0 && j >= 0 && i < SENSOR_GRID_HEIGHT && j < SENSOR_GRID_WIDTH && sensorArray[i][j] > DETECTION_WEIGHT_THRESHOLD){
+				if(i >= 0 && j >= 0 && i < SENSOR_GRID_ROWS && j < SENSOR_GRID_COLUMNS && sensorArray[i][j] > DETECTION_WEIGHT_THRESHOLD){
 						numTiles++;
 				}
 			}
@@ -370,11 +370,11 @@ public class FallDetection implements FallDetectionService
 		public void sensorChanged(SensorChangeEvent e)
 		{
 			int i = e.getIndex() + startingIndex;
-			if(i < 0 || i >= FallDetection.SENSOR_GRID_WIDTH * FallDetection.SENSOR_GRID_HEIGHT)
+			if(i < 0 || i >= FallDetection.SENSOR_GRID_COLUMNS * FallDetection.SENSOR_GRID_ROWS)
 				return;
 			
-			int r = i / FallDetection.SENSOR_GRID_WIDTH;
-			int c = i % FallDetection.SENSOR_GRID_WIDTH;
+			int r = i / FallDetection.SENSOR_GRID_COLUMNS;
+			int c = i % FallDetection.SENSOR_GRID_COLUMNS;
 			
 			FallDetection.this.sensorArray[r][c] = e.getValue() / SENSOR_CONVERSION_FACTOR;
 			FallDetection.this.detectFall(r, c);
